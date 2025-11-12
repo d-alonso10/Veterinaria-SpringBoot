@@ -72,120 +72,128 @@ public class AtencionService {
     }
     
     /**
-     * Crea una atención desde una cita
+     * Crea una atención desde una cita usando el SP
      */
-    public Atencion crearDesdeCita(Integer idCita, Integer idGroomer, Integer idSucursal, 
-                                   LocalDateTime tiempoEstimadoInicio, 
-                                   LocalDateTime tiempoEstimadoFin) {
-        log.info("Creando atención desde cita: {}", idCita);
+    public void crearDesdeCita(Integer idCita, Integer idGroomer, Integer idSucursal, 
+                               Integer turnoNum,
+                               LocalDateTime tiempoEstimadoInicio, 
+                               LocalDateTime tiempoEstimadoFin,
+                               Integer prioridad) {
+        log.info("Creando atención desde cita usando SP: {}", idCita);
         
+        // Validar que la cita existe
         Cita cita = citaRepository.findById(idCita)
                 .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
         
-        Groomer groomer = groomerRepository.findById(idGroomer)
-                .orElseThrow(() -> new RuntimeException("Groomer no encontrado"));
+        // Validar que el groomer existe
+        if (!groomerRepository.existsById(idGroomer)) {
+            throw new RuntimeException("Groomer no encontrado");
+        }
         
-        Sucursal sucursal = sucursalRepository.findById(idSucursal)
-                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
-        
-        Atencion atencion = new Atencion();
-        atencion.setCita(cita);
-        atencion.setMascota(cita.getMascota());
-        atencion.setCliente(cita.getCliente());
-        atencion.setGroomer(groomer);
-        atencion.setSucursal(sucursal);
-        atencion.setEstado(Atencion.Estado.en_espera);
-        atencion.setTiempoEstimadoInicio(tiempoEstimadoInicio);
-        atencion.setTiempoEstimadoFin(tiempoEstimadoFin);
-        atencion.setPrioridad(0);
-        atencion.setCreatedAt(LocalDateTime.now());
-        atencion.setUpdatedAt(LocalDateTime.now());
-        
-        // Actualizar estado de la cita
-        cita.setEstado(Cita.Estado.confirmada);
-        citaRepository.save(cita);
-        
-        Atencion guardada = atencionRepository.save(atencion);
-        log.info("Atención creada exitosamente con ID: {}", guardada.getIdAtencion());
-        return guardada;
-    }
-    
-    /**
-     * Crea una atención walk-in (sin cita previa)
-     */
-    public Atencion crearWalkIn(Integer idMascota, Integer idCliente, Integer idGroomer, 
-                               Integer idSucursal, LocalDateTime tiempoEstimadoInicio,
-                               LocalDateTime tiempoEstimadoFin, String observaciones) {
-        log.info("Creando atención walk-in para mascota: {}", idMascota);
-        
-        Mascota mascota = mascotaRepository.findById(idMascota)
-                .orElseThrow(() -> new RuntimeException("Mascota no encontrada"));
-        
-        Cliente cliente = clienteRepository.findById(idCliente)
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
-        
-        Groomer groomer = groomerRepository.findById(idGroomer)
-                .orElseThrow(() -> new RuntimeException("Groomer no encontrado"));
-        
-        Sucursal sucursal = sucursalRepository.findById(idSucursal)
-                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
-        
-        Atencion atencion = new Atencion();
-        atencion.setMascota(mascota);
-        atencion.setCliente(cliente);
-        atencion.setGroomer(groomer);
-        atencion.setSucursal(sucursal);
-        atencion.setEstado(Atencion.Estado.en_espera);
-        atencion.setTiempoEstimadoInicio(tiempoEstimadoInicio);
-        atencion.setTiempoEstimadoFin(tiempoEstimadoFin);
-        atencion.setObservaciones(observaciones);
-        atencion.setPrioridad(0);
-        atencion.setCreatedAt(LocalDateTime.now());
-        atencion.setUpdatedAt(LocalDateTime.now());
-        
-        Atencion guardada = atencionRepository.save(atencion);
-        log.info("Atención walk-in creada con ID: {}", guardada.getIdAtencion());
-        return guardada;
-    }
-    
-    /**
-     * Actualiza el estado de una atención
-     */
-    public Atencion actualizarEstado(Integer idAtencion, String nuevoEstado) {
-        log.info("Actualizando estado de atención: {} a {}", idAtencion, nuevoEstado);
-        
-        Atencion atencion = atencionRepository.findById(idAtencion)
-                .orElseThrow(() -> new RuntimeException("Atención no encontrada"));
+        // Validar que la sucursal existe
+        if (!sucursalRepository.existsById(idSucursal)) {
+            throw new RuntimeException("Sucursal no encontrada");
+        }
         
         try {
-            Atencion.Estado estado = Atencion.Estado.valueOf(nuevoEstado);
-            atencion.setEstado(estado);
-            
-            // Si cambia a "en_servicio", registrar hora real de inicio
-            if (estado == Atencion.Estado.en_servicio && atencion.getTiempoRealInicio() == null) {
-                atencion.setTiempoRealInicio(LocalDateTime.now());
-            }
-            
-            // Si cambia a "terminado", registrar hora real de fin
-            if (estado == Atencion.Estado.terminado && atencion.getTiempoRealFin() == null) {
-                atencion.setTiempoRealFin(LocalDateTime.now());
-            }
-            
-            atencion.setUpdatedAt(LocalDateTime.now());
-            
-            Atencion actualizada = atencionRepository.save(atencion);
-            log.info("Estado de atención actualizado");
-            return actualizada;
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Estado no válido: " + nuevoEstado);
+            // Llamar al SP
+            atencionRepository.crearAtencionDesdeCita(
+                    idCita,
+                    idGroomer,
+                    idSucursal,
+                    turnoNum,
+                    tiempoEstimadoInicio,
+                    tiempoEstimadoFin,
+                    prioridad
+            );
+            log.info("Atención creada exitosamente desde cita usando SP");
+        } catch (Exception e) {
+            log.error("Error al crear atención desde cita: ", e);
+            throw new RuntimeException("Error al crear atención: " + e.getMessage());
         }
     }
     
     /**
-     * Marca una atención como terminada
+     * Crea una atención walk-in (sin cita previa) usando el SP
      */
-    public Atencion terminar(Integer idAtencion) {
+    public void crearWalkIn(Integer idMascota, Integer idCliente, Integer idGroomer, 
+                            Integer idSucursal, Integer turnoNum,
+                            LocalDateTime tiempoEstimadoInicio,
+                            LocalDateTime tiempoEstimadoFin, 
+                            Integer prioridad,
+                            String observaciones) {
+        log.info("Creando atención walk-in para mascota usando SP: {}", idMascota);
+        
+        // Validaciones
+        if (!mascotaRepository.existsById(idMascota)) {
+            throw new RuntimeException("Mascota no encontrada");
+        }
+        
+        if (!clienteRepository.existsById(idCliente)) {
+            throw new RuntimeException("Cliente no encontrado");
+        }
+        
+        if (!groomerRepository.existsById(idGroomer)) {
+            throw new RuntimeException("Groomer no encontrado");
+        }
+        
+        if (!sucursalRepository.existsById(idSucursal)) {
+            throw new RuntimeException("Sucursal no encontrada");
+        }
+        
+        try {
+            // Llamar al SP
+            atencionRepository.crearAtencionWalkIn(
+                    idMascota,
+                    idCliente,
+                    idGroomer,
+                    idSucursal,
+                    turnoNum,
+                    tiempoEstimadoInicio,
+                    tiempoEstimadoFin,
+                    prioridad,
+                    observaciones
+            );
+            log.info("Atención walk-in creada exitosamente usando SP");
+        } catch (Exception e) {
+            log.error("Error al crear atención walk-in: ", e);
+            throw new RuntimeException("Error al crear atención walk-in: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Actualiza el estado de una atención usando el SP
+     */
+    public void actualizarEstado(Integer idAtencion, String nuevoEstado) {
+        log.info("Actualizando estado de atención usando SP: {} a {}", idAtencion, nuevoEstado);
+        
+        // Validar que la atención existe
+        if (!atencionRepository.existsById(idAtencion)) {
+            throw new RuntimeException("Atención no encontrada");
+        }
+        
+        // Validar que el estado es válido
+        try {
+            Atencion.Estado.valueOf(nuevoEstado);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Estado no válido: " + nuevoEstado);
+        }
+        
+        try {
+            // Llamar al SP
+            atencionRepository.actualizarEstadoAtencion(idAtencion, nuevoEstado);
+            log.info("Estado de atención actualizado exitosamente usando SP");
+        } catch (Exception e) {
+            log.error("Error al actualizar estado de atención: ", e);
+            throw new RuntimeException("Error al actualizar estado: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Marca una atención como terminada usando el SP
+     */
+    public void terminar(Integer idAtencion) {
         log.info("Terminando atención: {}", idAtencion);
-        return actualizarEstado(idAtencion, "terminado");
+        actualizarEstado(idAtencion, "terminado");
     }
 }

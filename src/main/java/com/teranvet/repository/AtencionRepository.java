@@ -2,11 +2,14 @@ package com.teranvet.repository;
 
 import com.teranvet.entity.Atencion;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -23,4 +26,60 @@ public interface AtencionRepository extends JpaRepository<Atencion, Integer> {
     
     @Query("SELECT a FROM Atencion a WHERE DATE(a.createdAt) = :fecha ORDER BY a.createdAt DESC")
     List<Atencion> findAtencionesDelDia(@Param("fecha") LocalDate fecha);
+    
+    // ==================== STORED PROCEDURES ====================
+    
+    /**
+     * Crea una Atención desde una Cita existente
+     * Llamada al SP: sp_CrearAtencionDesdeCita
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "CALL sp_CrearAtencionDesdeCita(:idCita, :idGroomer, :idSucursal, :turnoNum, " +
+            ":tiempoEstimadoInicio, :tiempoEstimadoFin, :prioridad)", nativeQuery = true)
+    void crearAtencionDesdeCita(
+            @Param("idCita") Integer idCita,
+            @Param("idGroomer") Integer idGroomer,
+            @Param("idSucursal") Integer idSucursal,
+            @Param("turnoNum") Integer turnoNum,
+            @Param("tiempoEstimadoInicio") LocalDateTime tiempoEstimadoInicio,
+            @Param("tiempoEstimadoFin") LocalDateTime tiempoEstimadoFin,
+            @Param("prioridad") Integer prioridad);
+    
+    /**
+     * Crea una Atención Walk-In (sin cita previa)
+     * Llamada al SP: sp_CrearAtencionWalkIn
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "CALL sp_CrearAtencionWalkIn(:idMascota, :idCliente, :idGroomer, :idSucursal, " +
+            ":turnoNum, :tiempoEstimadoInicio, :tiempoEstimadoFin, :prioridad, :observaciones)", nativeQuery = true)
+    void crearAtencionWalkIn(
+            @Param("idMascota") Integer idMascota,
+            @Param("idCliente") Integer idCliente,
+            @Param("idGroomer") Integer idGroomer,
+            @Param("idSucursal") Integer idSucursal,
+            @Param("turnoNum") Integer turnoNum,
+            @Param("tiempoEstimadoInicio") LocalDateTime tiempoEstimadoInicio,
+            @Param("tiempoEstimadoFin") LocalDateTime tiempoEstimadoFin,
+            @Param("prioridad") Integer prioridad,
+            @Param("observaciones") String observaciones);
+    
+    /**
+     * Actualiza el estado de una Atención
+     * Llamada al SP: sp_ActualizarEstadoAtencion
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "CALL sp_ActualizarEstadoAtencion(:idAtencion, :nuevoEstado)", nativeQuery = true)
+    void actualizarEstadoAtencion(
+            @Param("idAtencion") Integer idAtencion,
+            @Param("nuevoEstado") String nuevoEstado);
+    
+    /**
+     * Obtiene la cola actual de atención para una sucursal
+     * Llamada al SP: sp_ObtenerColaActual
+     */
+    @Query(value = "CALL sp_ObtenerColaActual(:idSucursal)", nativeQuery = true)
+    List<Object[]> obtenerColaActualSP(@Param("idSucursal") Integer idSucursal);
 }
