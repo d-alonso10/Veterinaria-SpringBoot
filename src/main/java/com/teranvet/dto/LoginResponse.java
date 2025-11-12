@@ -15,5 +15,7 @@ public class LoginResponse implements Serializable {
     private String nombre;
     private String email;
     private String rol;
-    private String token;
+    private String mensaje;
+    private String token;        // JWT Token
+    private String tokenType;    // "Bearer"
 }

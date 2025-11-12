@@ -1,0 +1,433 @@
+{
+  "info": {
+    "_postman_id": "teranvet-api-v1",
+    "name": "TeranVet API - Integration Tests",
+    "description": "Colección de pruebas de integración fin-a-fin para TeranVet API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. AUTENTICACIÓN",
+      "item": [
+        {
+          "name": "Login - Obtener JWT Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login exitoso - Status 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contiene JWT token', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.token).to.exist;",
+                  "  pm.expect(jsonData.data.tokenType).to.equal('Bearer');",
+                  "});",
+                  "",
+                  "// Guardar token en variable para usar en próximas peticiones",
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('jwt_token', jsonData.data.token);",
+                  "",
+                  "pm.test('Token contiene datos del usuario', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.idUsuario).to.exist;",
+                  "  pm.expect(jsonData.data.nombre).to.exist;",
+                  "  pm.expect(jsonData.data.rol).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"email\\\": \\\"admin@example.com\\\",\\n  \\\"passwordHash\\\": \\\"admin123\\\"\\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": ["8080"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. FLUJO WALK-IN COMPLETO",
+      "description": "Crear cliente → mascota → atención → factura → pago",
+      "item": [
+        {
+          "name": "2.1. Crear Cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Cliente creado - Status 201', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('cliente_id', jsonData.data.idCliente);",
+                  "",
+                  "pm.test('Cliente retorna ID', function() {",
+                  "  pm.expect(jsonData.data.idCliente).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"nombre\\\": \\\"Juan\\\",\\n  \\\"apellido\\\": \\\"Pérez\\\",\\n  \\\"dniRuc\\\": \\\"12345678\\\",\\n  \\\"email\\\": \\\"juan.perez@example.com\\\",\\n  \\\"telefono\\\": \\\"987654321\\\",\\n  \\\"direccion\\\": \\\"Av. Principal 123\\\"\\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": ["8080"],
+              "path": ["api", "clientes"]
+            }
+          }
+        },
+        {
+          "name": "2.2. Crear Mascota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mascota creada - Status 201', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('mascota_id', jsonData.data.idMascota);",
+                  "",
+                  "pm.test('Mascota retorna ID', function() {",
+                  "  pm.expect(jsonData.data.idMascota).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"idCliente\\\": {{cliente_id}},\\n  \\\"nombre\\\": \\\"Rex\\\",\\n  \\\"especie\\\": \\\"perro\\\",\\n  \\\"raza\\\": \\\"Labrador\\\",\\n  \\\"sexo\\\": \\\"macho\\\",\\n  \\\"fechaNacimiento\\\": \\\"2020-01-15\\\",\\n  \\\"microchip\\\": \\\"MC123456\\\",\\n  \\\"observaciones\\\": \\\"Perro muy juguetón\\\"\\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/mascotas",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": ["8080"],
+              "path": ["api", "mascotas"]
+            }
+          }
+        },
+        {
+          "name": "2.3. Crear Atención Walk-In",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Atención creada - Status 201', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('atencion_id', jsonData.data.idAtencion);",
+                  "",
+                  "pm.test('Atención retorna ID', function() {",
+                  "  pm.expect(jsonData.data.idAtencion).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"idMascota\\\": {{mascota_id}},\\n  \\\"idCliente\\\": {{cliente_id}},\\n  \\\"idGroomer\\\": 1,\\n  \\\"idSucursal\\\": 1,\\n  \\\"turnoNum\\\": 1,\\n  \\\"tiempoEstimadoInicio\\\": \\\"2025-11-12T10:00:00\\\",\\n  \\\"tiempoEstimadoFin\\\": \\\"2025-11-12T10:45:00\\\",\\n  \\\"prioridad\\\": 0,\\n  \\\"observaciones\\\": \\\"Baño completo y corte\\\"\\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/atenciones/walk-in",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": ["8080"],
+              "path": ["api", "atenciones", "walk-in"]
+            }
+          }
+        },
+        {
+          "name": "2.4. Marcar Atención como Terminada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Atención actualizada - Status 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"estado\\\": \\\"terminado\\\"\\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/atenciones/{{atencion_id}}/estado",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": ["8080"],
+              "path": ["api", "atenciones", "{{atencion_id}}", "estado"]
+            }
+          }
+        },
+        {
+          "name": "2.5. Crear Factura",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Factura creada - Status 201', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('factura_id', jsonData.data.idFactura);",
+                  "",
+                  "pm.test('Factura retorna ID', function() {",
+                  "  pm.expect(jsonData.data.idFactura).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"serie\\\": \\\"F001\\\",\\n  \\\"numero\\\": \\\"0100\\\",\\n  \\\"idAtencion\\\": {{atencion_id}},\\n  \\\"metodoPagoSugerido\\\": \\\"efectivo\\\"\\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/facturas",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": ["8080"],
+              "path": ["api", "facturas"]
+            }
+          }
+        },
+        {
+          "name": "2.6. Registrar Pago",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Pago registrado - Status 201', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Pago retorna ID', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.idPago).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"idFactura\\\": {{factura_id}},\\n  \\\"monto\\\": 105.50,\\n  \\\"metodo\\\": \\\"efectivo\\\",\\n  \\\"referencia\\\": \\\"Pago contado\\\"\\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/pagos",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": ["8080"],
+              "path": ["api", "pagos"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. VALIDACIONES DE SEGURIDAD",
+      "item": [
+        {
+          "name": "3.1. Acceso sin JWT - Debe fallar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Acceso sin JWT - Status 401 o 403', function() {",
+                  "  pm.expect([401, 403]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": ["8080"],
+              "path": ["api", "clientes"]
+            }
+          }
+        },
+        {
+          "name": "3.2. JWT inválido - Debe fallar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('JWT inválido - Status 401 o 403', function() {",
+                  "  pm.expect([401, 403]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid.token.here"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": ["8080"],
+              "path": ["api", "clientes"]
+            }
+          }
+        },
+        {
+          "name": "3.3. Con JWT válido - Debe funcionar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Con JWT válido - Status 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": ["8080"],
+              "path": ["api", "clientes"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
