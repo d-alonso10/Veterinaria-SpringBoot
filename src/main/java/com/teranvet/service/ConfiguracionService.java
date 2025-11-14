@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors; // <--- IMPORT REQUERIDO
 
 /**
  * Servicio para gestión de Configuraciones de Estimación.
@@ -47,8 +48,10 @@ public class ConfiguracionService {
             throw new IllegalArgumentException("ID de servicio inválido");
         }
         return configRepository.findAll().stream()
-                .filter(c -> c.getIdServicio() != null && c.getIdServicio().equals(idServicio))
-                .toList();
+                // CORREGIDO: Llamar a getServicio().getId()
+                .filter(c -> c.getServicio() != null && c.getServicio().getId().equals(idServicio))
+                // CORREGIDO: Usar .collect(Collectors.toList()) para Java 8
+                .collect(Collectors.toList());
     }
 
     /**
@@ -58,15 +61,18 @@ public class ConfiguracionService {
         if (config == null) {
             throw new IllegalArgumentException("La configuración no puede ser nula");
         }
-        
-        if (config.getIdServicio() == null || config.getIdServicio() <= 0) {
+
+        // CORREGIDO: Validar el ID a través del objeto Servicio
+        if (config.getServicio() == null || config.getServicio().getId() == null || config.getServicio().getId() <= 0) {
             throw new IllegalArgumentException("El ID de servicio es requerido");
         }
-        
+
         if (config.getTiempoEstimadoMin() == null || config.getTiempoEstimadoMin() <= 0) {
             throw new IllegalArgumentException("El tiempo estimado debe ser mayor a 0");
         }
-        
+
+        // Aquí se asume que los objetos Servicio y Groomer ya vienen adjuntos.
+        // Si no, necesitarías obtenerlos (fetch) de sus repositorios primero.
         return configRepository.save(config);
     }
 
@@ -77,22 +83,24 @@ public class ConfiguracionService {
         if (idConfig == null || idConfig <= 0) {
             throw new IllegalArgumentException("ID de configuración inválido");
         }
-        
+
         ConfiguracionEstimacion configExistente = configRepository.findById(idConfig)
                 .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada con ID: " + idConfig));
-        
-        if (configActualizada.getIdServicio() != null && configActualizada.getIdServicio() > 0) {
-            configExistente.setIdServicio(configActualizada.getIdServicio());
+
+        // CORREGIDO: Usar setServicio() y getServicio()
+        if (configActualizada.getServicio() != null && configActualizada.getServicio().getId() != null && configActualizada.getServicio().getId() > 0) {
+            configExistente.setServicio(configActualizada.getServicio());
         }
-        
-        if (configActualizada.getIdGroomer() != null && configActualizada.getIdGroomer() > 0) {
-            configExistente.setIdGroomer(configActualizada.getIdGroomer());
+
+        // CORREGIDO: Usar setGroomer() y getGroomer()
+        if (configActualizada.getGroomer() != null && configActualizada.getGroomer().getId() != null && configActualizada.getGroomer().getId() > 0) {
+            configExistente.setGroomer(configActualizada.getGroomer());
         }
-        
+
         if (configActualizada.getTiempoEstimadoMin() != null && configActualizada.getTiempoEstimadoMin() > 0) {
             configExistente.setTiempoEstimadoMin(configActualizada.getTiempoEstimadoMin());
         }
-        
+
         return configRepository.save(configExistente);
     }
 
@@ -103,11 +111,11 @@ public class ConfiguracionService {
         if (idConfig == null || idConfig <= 0) {
             throw new IllegalArgumentException("ID de configuración inválido");
         }
-        
+
         if (!configRepository.existsById(idConfig)) {
             throw new IllegalArgumentException("Configuración no encontrada con ID: " + idConfig);
         }
-        
+
         configRepository.deleteById(idConfig);
     }
 
@@ -119,11 +127,12 @@ public class ConfiguracionService {
         if (idServicio == null || idServicio <= 0) {
             throw new IllegalArgumentException("ID de servicio inválido");
         }
-        
+
         return configRepository.findAll().stream()
-                .filter(c -> c.getIdServicio() != null && c.getIdServicio().equals(idServicio))
+                // CORREGIDO: Llamar a getServicio().getId()
+                .filter(c -> c.getServicio() != null && c.getServicio().getId().equals(idServicio))
                 .findFirst()
                 .map(ConfiguracionEstimacion::getTiempoEstimadoMin)
-                .orElse(null);
+                .orElse(null); // Devuelve null si no se encuentra, o un valor por defecto si prefieres
     }
 }

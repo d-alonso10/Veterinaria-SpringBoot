@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Servicio para gestión de Usuarios del Sistema.
@@ -161,7 +162,7 @@ public class UsuarioSistemaService {
         
         return usuarioRepository.findAll().stream()
                 .filter(u -> u.getRol() != null && u.getRol().toString().equalsIgnoreCase(rol))
-                .toList();
+                .collect(Collectors.toList());
     }
 
     /**
