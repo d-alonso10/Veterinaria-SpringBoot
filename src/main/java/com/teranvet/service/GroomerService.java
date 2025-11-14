@@ -6,10 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigInteger; // <--- IMPORT REQUERIDO
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors; // <--- IMPORT REQUERIDO PARA JAVA 8
 
 /**
  * Servicio para gestión de Groomers (Personal de Grooming).
@@ -24,13 +26,14 @@ public class GroomerService {
     private GroomerRepository groomerRepository;
 
     /**
-     * Obtener todos los groomers usando SP.
+     * Obtener todos los groomers.
      *
      * @return Lista de todos los groomers
      */
     @Transactional(readOnly = true)
     public List<Groomer> obtenerTodos() {
-        return groomerRepository.obtenerGroomerDisponible_SP(LocalDateTime.now(), 60);
+        // Usamos findAll() de JPA que devuelve List<Groomer>
+        return groomerRepository.findAll();
     }
 
     /**
@@ -52,19 +55,29 @@ public class GroomerService {
      * Utiliza el SP sp_InsertarGroomer para la inserción.
      *
      * @param groomer Objeto Groomer con los datos
-     * @return Groomer creado
+     * @return Groomer (Nota: El SP es void, se retorna el objeto de entrada por consistencia)
      */
     public Groomer crear(Groomer groomer) {
         if (groomer == null || groomer.getNombre() == null || groomer.getNombre().trim().isEmpty()) {
             throw new IllegalArgumentException("El nombre del groomer es requerido");
         }
-        
-        // Validación básica
+
         if (groomer.getEspecialidades() == null || groomer.getEspecialidades().isEmpty()) {
-            throw new IllegalArgumentException("El groomer debe tener al menos una especialidad");
+            groomer.setEspecialidades("[]");
         }
-        
-        return groomerRepository.save(groomer);
+
+        if (groomer.getDisponibilidad() == null || groomer.getDisponibilidad().isEmpty()) {
+            groomer.setDisponibilidad("{}");
+        }
+
+        // Llamada al Stored Procedure
+        groomerRepository.insertarGroomer(
+                groomer.getNombre(),
+                groomer.getEspecialidades(),
+                groomer.getDisponibilidad()
+        );
+
+        return groomer;
     }
 
     /**
@@ -79,23 +92,24 @@ public class GroomerService {
         if (idGroomer == null || idGroomer <= 0) {
             throw new IllegalArgumentException("ID de groomer inválido");
         }
-        
+
         Groomer groomerExistente = groomerRepository.findById(idGroomer)
                 .orElseThrow(() -> new IllegalArgumentException("Groomer no encontrado con ID: " + idGroomer));
-        
-        if (groomerActualizado.getNombre() != null && !groomerActualizado.getNombre().trim().isEmpty()) {
-            groomerExistente.setNombre(groomerActualizado.getNombre());
-        }
-        
-        if (groomerActualizado.getEspecialidades() != null && !groomerActualizado.getEspecialidades().isEmpty()) {
-            groomerExistente.setEspecialidades(groomerActualizado.getEspecialidades());
-        }
-        
-        if (groomerActualizado.getDisponibilidad() != null) {
-            groomerExistente.setDisponibilidad(groomerActualizado.getDisponibilidad());
-        }
-        
-        return groomerRepository.save(groomerExistente);
+
+        String nombre = (groomerActualizado.getNombre() != null) ? groomerActualizado.getNombre() : groomerExistente.getNombre();
+        String especialidades = (groomerActualizado.getEspecialidades() != null) ? groomerActualizado.getEspecialidades() : groomerExistente.getEspecialidades();
+        String disponibilidad = (groomerActualizado.getDisponibilidad() != null) ? groomerActualizado.getDisponibilidad() : groomerExistente.getDisponibilidad();
+
+        // Llamada al Stored Procedure
+        groomerRepository.actualizarGroomer(
+                idGroomer,
+                nombre,
+                especialidades,
+                disponibilidad
+        );
+
+        // Retornar el objeto actualizado buscándolo de nuevo
+        return groomerRepository.findById(idGroomer).get();
     }
 
     /**
@@ -107,11 +121,11 @@ public class GroomerService {
         if (idGroomer == null || idGroomer <= 0) {
             throw new IllegalArgumentException("ID de groomer inválido");
         }
-        
+
         if (!groomerRepository.existsById(idGroomer)) {
             throw new IllegalArgumentException("Groomer no encontrado con ID: " + idGroomer);
         }
-        
+
         groomerRepository.deleteById(idGroomer);
     }
 
@@ -120,19 +134,16 @@ public class GroomerService {
      * Utiliza el SP sp_ObtenerDisponibilidadGroomers.
      *
      * @param fecha Fecha para consultar disponibilidad
-     * @return Lista de groomers disponibles en esa fecha
+     * @return Lista de Object[] con los datos de disponibilidad del SP.
      */
     @Transactional(readOnly = true)
-    public List<Groomer> obtenerDisponibilidad(LocalDate fecha) {
+    // CORRECCIÓN: El tipo de retorno es List<Object[]>
+    public List<Object[]> obtenerDisponibilidad(LocalDate fecha) {
         if (fecha == null) {
             throw new IllegalArgumentException("La fecha es requerida");
         }
-        
-        // Convertir LocalDate a LocalDateTime (inicio del día)
-        LocalDateTime inicioDelDia = fecha.atStartOfDay();
-        
-        // Llamar al SP con 60 minutos de duración default
-        return groomerRepository.obtenerGroomerDisponible_SP(inicioDelDia, 60);
+
+        return groomerRepository.obtenerDisponibilidadGroomers(fecha);
     }
 
     /**
@@ -140,30 +151,33 @@ public class GroomerService {
      * Utiliza el SP sp_OcupacionGroomer.
      *
      * @param fecha Fecha para consultar ocupación
-     * @return Lista de groomers con su información de ocupación
+     * @return Lista de Object[] con su información de ocupación
      */
     @Transactional(readOnly = true)
-    public List<Groomer> obtenerOcupacion(LocalDate fecha) {
+    public List<Object[]> obtenerOcupacion(LocalDate fecha) {
         if (fecha == null) {
             throw new IllegalArgumentException("La fecha es requerida");
         }
-        
-        // Este SP debería retornar información de ocupación
-        // Por ahora usamos obtenerTodos como fallback
-        return obtenerTodos();
+
+        return groomerRepository.ocupacionGroomer(fecha);
     }
 
     /**
      * Obtener tiempos promedio de trabajo de todos los groomers.
      * Utiliza el SP sp_TiemposPromedioGroomer.
      *
-     * @return Lista de groomers con su información de tiempos promedio
+     * @return Lista de Object[] con su información de tiempos promedio
      */
     @Transactional(readOnly = true)
-    public List<Groomer> obtenerTiemposPromedio() {
-        // Este SP debería retornar información de tiempos promedio
-        // Por ahora usamos obtenerTodos como fallback
-        return obtenerTodos();
+    public List<Object[]> obtenerTiemposPromedio(LocalDate fechaInicio, LocalDate fechaFin) {
+        if (fechaInicio == null || fechaFin == null) {
+            throw new IllegalArgumentException("Las fechas de inicio y fin son requeridas");
+        }
+        if (fechaFin.isBefore(fechaInicio)) {
+            throw new IllegalArgumentException("La fecha fin no puede ser anterior a la fecha inicio");
+        }
+
+        return groomerRepository.tiemposPromedioGroomer(fechaInicio, fechaFin);
     }
 
     /**
@@ -177,11 +191,12 @@ public class GroomerService {
         if (especialidad == null || especialidad.trim().isEmpty()) {
             throw new IllegalArgumentException("La especialidad es requerida");
         }
-        
+
         return groomerRepository.findAll().stream()
-                .filter(g -> g.getEspecialidades() != null && 
-                           g.getEspecialidades().toLowerCase().contains(especialidad.toLowerCase()))
-                .toList();
+                .filter(g -> g.getEspecialidades() != null &&
+                        g.getEspecialidades().toLowerCase().contains(especialidad.toLowerCase()))
+                // CORRECCIÓN: Usando .collect(Collectors.toList()) para Java 8
+                .collect(Collectors.toList());
     }
 
     /**
@@ -197,26 +212,32 @@ public class GroomerService {
         if (idGroomer == null || idGroomer <= 0) {
             throw new IllegalArgumentException("ID de groomer inválido");
         }
-        
+
         if (fechaInicio == null) {
             throw new IllegalArgumentException("La fecha de inicio es requerida");
         }
-        
+
         if (minutos == null || minutos <= 0) {
             throw new IllegalArgumentException("La duración debe ser mayor a 0 minutos");
         }
-        
-        // Verificar si el groomer existe
+
         if (!groomerRepository.existsById(idGroomer)) {
             throw new IllegalArgumentException("Groomer no encontrado con ID: " + idGroomer);
         }
-        
-        // Consultar disponibilidad usando SP
-        List<Groomer> disponibles = groomerRepository.obtenerGroomerDisponible_SP(fechaInicio, minutos);
-        
-        // Verificar si el groomer está en la lista de disponibles
+
+        // CORRECCIÓN: El SP devuelve List<Object[]>
+        List<Object[]> disponibles = groomerRepository.obtenerDisponibilidadGroomers(fechaInicio.toLocalDate());
+
+        // CORRECCIÓN: Procesar el Object[] para encontrar el ID.
         return disponibles.stream()
-                .anyMatch(g -> g.getIdGroomer().equals(idGroomer));
+                .anyMatch(row -> {
+                    if (row[0] instanceof BigInteger) {
+                        return ((BigInteger) row[0]).intValue() == idGroomer;
+                    } else if (row[0] instanceof Integer) {
+                        return ((Integer) row[0]).equals(idGroomer);
+                    }
+                    return false;
+                });
     }
 
     /**

@@ -33,6 +33,7 @@ public class GroomerController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Groomer>>> obtenerTodos() {
         try {
+            // Este método SÍ devuelve List<Groomer>
             List<Groomer> groomers = groomerService.obtenerTodos();
             return ResponseEntity.ok(ApiResponse.exitoso("Groomers obtenidos correctamente", groomers));
         } catch (Exception e) {
@@ -126,12 +127,14 @@ public class GroomerController {
      * Obtener groomers disponibles para una fecha específica.
      */
     @GetMapping("/disponibilidad/{fecha}")
-    public ResponseEntity<ApiResponse<List<Groomer>>> obtenerDisponibilidad(
+    // CORRECCIÓN: El tipo de dato genérico de ApiResponse ahora es List<Object[]>
+    public ResponseEntity<ApiResponse<List<Object[]>>> obtenerDisponibilidad(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         try {
-            List<Groomer> disponibles = groomerService.obtenerDisponibilidad(fecha);
+            // CORRECCIÓN: El servicio devuelve List<Object[]>
+            List<Object[]> disponibles = groomerService.obtenerDisponibilidad(fecha);
             return ResponseEntity.ok(ApiResponse.exitoso(
-                    "Groomers disponibles obtenidos correctamente", disponibles));
+                    "Datos de disponibilidad obtenidos correctamente", disponibles));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error(e.getMessage()));
@@ -146,10 +149,12 @@ public class GroomerController {
      * Obtener ocupación de groomers para una fecha específica.
      */
     @GetMapping("/ocupacion/{fecha}")
-    public ResponseEntity<ApiResponse<List<Groomer>>> obtenerOcupacion(
+    // CORRECCIÓN: El tipo de dato genérico de ApiResponse ahora es List<Object[]>
+    public ResponseEntity<ApiResponse<List<Object[]>>> obtenerOcupacion(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         try {
-            List<Groomer> ocupacion = groomerService.obtenerOcupacion(fecha);
+            // CORRECCIÓN: El servicio devuelve List<Object[]>
+            List<Object[]> ocupacion = groomerService.obtenerOcupacion(fecha);
             return ResponseEntity.ok(ApiResponse.exitoso(
                     "Información de ocupación obtenida correctamente", ocupacion));
         } catch (IllegalArgumentException e) {
@@ -166,11 +171,19 @@ public class GroomerController {
      * Obtener tiempos promedio de todos los groomers.
      */
     @GetMapping("/tiempos-promedio")
-    public ResponseEntity<ApiResponse<List<Groomer>>> obtenerTiemposPromedio() {
+    // CORRECCIÓN: El tipo de dato genérico de ApiResponse ahora es List<Object[]>
+    // CORRECCIÓN: Se requieren parámetros de fecha
+    public ResponseEntity<ApiResponse<List<Object[]>>> obtenerTiemposPromedio(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
         try {
-            List<Groomer> tiempos = groomerService.obtenerTiemposPromedio();
+            // CORRECCIÓN: El servicio devuelve List<Object[]> y requiere fechas
+            List<Object[]> tiempos = groomerService.obtenerTiemposPromedio(fechaInicio, fechaFin);
             return ResponseEntity.ok(ApiResponse.exitoso(
                     "Tiempos promedio obtenidos correctamente", tiempos));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error al obtener tiempos promedio: " + e.getMessage()));
@@ -185,6 +198,7 @@ public class GroomerController {
     public ResponseEntity<ApiResponse<List<Groomer>>> obtenerPorEspecialidad(
             @PathVariable String especialidad) {
         try {
+            // Este método SÍ devuelve List<Groomer>
             List<Groomer> groomers = groomerService.obtenerPorEspecialidad(especialidad);
             return ResponseEntity.ok(ApiResponse.exitoso(
                     "Groomers obtenidos por especialidad correctamente", groomers));
@@ -207,6 +221,7 @@ public class GroomerController {
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fecha,
             @PathVariable Integer minutos) {
         try {
+            // Este método SÍ devuelve un Boolean
             boolean disponible = groomerService.estaDisponible(idGroomer, fecha, minutos);
             String mensaje = disponible ? "Groomer está disponible" : "Groomer no está disponible";
             return ResponseEntity.ok(ApiResponse.exitoso(mensaje, disponible));

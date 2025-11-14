@@ -13,20 +13,21 @@ import java.util.List;
 
 @Repository
 public interface GroomerRepository extends JpaRepository<Groomer, Integer> {
-    
+
     List<Groomer> findAll();
-    
+
     List<Groomer> findByNombreContainingIgnoreCase(String nombre);
-    
+
     // ==================== STORED PROCEDURES ====================
-    
+
     /**
      * Obtiene todos los Groomers
      * Llamada al SP: sp_ObtenerGroomers
      */
+    // NOTA: Cambiado a List<Groomer> para que coincida con la lógica esperada de 'findAll'
     @Query(value = "CALL sp_ObtenerGroomers()", nativeQuery = true)
-    List<Object[]> obtenerGroomersSP();
-    
+    List<Groomer> obtenerGroomersSP();
+
     /**
      * Inserta un nuevo Groomer
      * Llamada al SP: sp_InsertarGroomer
@@ -38,7 +39,7 @@ public interface GroomerRepository extends JpaRepository<Groomer, Integer> {
             @Param("p_nombre") String nombre,
             @Param("p_especialidades") String especialidades,
             @Param("p_disponibilidad") String disponibilidad);
-    
+
     /**
      * Actualiza un Groomer existente
      * Llamada al SP: sp_ActualizarGroomer
@@ -51,21 +52,21 @@ public interface GroomerRepository extends JpaRepository<Groomer, Integer> {
             @Param("p_nombre") String nombre,
             @Param("p_especialidades") String especialidades,
             @Param("p_disponibilidad") String disponibilidad);
-    
+
     /**
      * Obtiene disponibilidad de Groomers en una fecha
      * Llamada al SP: sp_ObtenerDisponibilidadGroomers
      */
     @Query(value = "CALL sp_ObtenerDisponibilidadGroomers(:p_fecha)", nativeQuery = true)
     List<Object[]> obtenerDisponibilidadGroomers(@Param("p_fecha") LocalDate fecha);
-    
+
     /**
      * Obtiene ocupación de Groomers en una fecha
      * Llamada al SP: sp_OcupacionGroomer
      */
     @Query(value = "CALL sp_OcupacionGroomer(:p_fecha)", nativeQuery = true)
     List<Object[]> ocupacionGroomer(@Param("p_fecha") LocalDate fecha);
-    
+
     /**
      * Obtiene tiempos promedio de Groomers en un rango de fechas
      * Llamada al SP: sp_TiemposPromedioGroomer

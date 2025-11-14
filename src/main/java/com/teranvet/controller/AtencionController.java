@@ -5,6 +5,7 @@ import com.teranvet.entity.Atencion;
 import com.teranvet.service.AtencionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat; // <-- Importante para LocalDateTime
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,21 +16,22 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/atenciones")
+// Ruta base corregida a '/api/atenciones' para seguir el estándar
+@RequestMapping("/api/atenciones")
 @CrossOrigin(origins = "*", maxAge = 3600)
 @Slf4j
 public class AtencionController {
-    
+
     @Autowired
     private AtencionService atencionService;
-    
+
     /**
      * GET /api/atenciones - Obtener todas las atenciones
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<Atencion>>> obtenerTodas() {
         try {
-            log.info("GET /atenciones - Obteniendo todas las atenciones");
+            log.info("GET /api/atenciones - Obteniendo todas las atenciones");
             List<Atencion> atenciones = atencionService.obtenerTodas();
             return ResponseEntity.ok(
                     ApiResponse.exitoso("Atenciones obtenidas exitosamente", atenciones)
@@ -40,14 +42,14 @@ public class AtencionController {
                     .body(ApiResponse.error("Error al obtener atenciones", e.getMessage()));
         }
     }
-    
+
     /**
      * GET /api/atenciones/{id} - Obtener atención por ID
      */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Atencion>> obtenerPorId(@PathVariable Integer id) {
         try {
-            log.info("GET /atenciones/{} - Obteniendo atención", id);
+            log.info("GET /api/atenciones/{} - Obteniendo atención", id);
             Atencion atencion = atencionService.obtenerPorId(id);
             return ResponseEntity.ok(
                     ApiResponse.exitoso("Atención obtenida exitosamente", atencion)
@@ -58,14 +60,14 @@ public class AtencionController {
                     .body(ApiResponse.error("Atención no encontrada", e.getMessage()));
         }
     }
-    
+
     /**
      * GET /api/atenciones/cola/{idSucursal} - Obtener cola actual
      */
     @GetMapping("/cola/{idSucursal}")
     public ResponseEntity<ApiResponse<List<Atencion>>> obtenerColaActual(@PathVariable Integer idSucursal) {
         try {
-            log.info("GET /atenciones/cola/{} - Obteniendo cola actual", idSucursal);
+            log.info("GET /api/atenciones/cola/{} - Obteniendo cola actual", idSucursal);
             List<Atencion> cola = atencionService.obtenerColaActual(idSucursal);
             return ResponseEntity.ok(
                     ApiResponse.exitoso("Cola obtenida exitosamente", cola)
@@ -76,14 +78,14 @@ public class AtencionController {
                     .body(ApiResponse.error("Error al obtener cola", e.getMessage()));
         }
     }
-    
+
     /**
      * GET /api/atenciones/cliente/{idCliente} - Atenciones de un cliente
      */
     @GetMapping("/cliente/{idCliente}")
     public ResponseEntity<ApiResponse<List<Atencion>>> obtenerPorCliente(@PathVariable Integer idCliente) {
         try {
-            log.info("GET /atenciones/cliente/{} - Obteniendo atenciones del cliente", idCliente);
+            log.info("GET /api/atenciones/cliente/{} - Obteniendo atenciones del cliente", idCliente);
             List<Atencion> atenciones = atencionService.obtenerPorCliente(idCliente);
             return ResponseEntity.ok(
                     ApiResponse.exitoso("Atenciones del cliente obtenidas", atenciones)
@@ -94,58 +96,74 @@ public class AtencionController {
                     .body(ApiResponse.error("Error al obtener atenciones", e.getMessage()));
         }
     }
-    
+
     /**
      * POST /api/atenciones/desde-cita - Crear atención desde cita
      */
     @PostMapping("/desde-cita")
-    public ResponseEntity<ApiResponse<Atencion>> crearDesdeCita(
+    public ResponseEntity<ApiResponse<String>> crearDesdeCita(
             @RequestParam Integer idCita,
             @RequestParam Integer idGroomer,
             @RequestParam Integer idSucursal,
-            @RequestParam LocalDateTime tiempoEstimadoInicio,
-            @RequestParam LocalDateTime tiempoEstimadoFin) {
+            // CORRECCIÓN: Se añadieron los parámetros faltantes que requiere el servicio
+            @RequestParam Integer turnoNum,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime tiempoEstimadoInicio,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime tiempoEstimadoFin,
+            @RequestParam Integer prioridad) {
         try {
-            log.info("POST /atenciones/desde-cita - Creando atención desde cita: {}", idCita);
-            Atencion atencion = atencionService.crearDesdeCita(
-                    idCita, idGroomer, idSucursal, tiempoEstimadoInicio, tiempoEstimadoFin
+            log.info("POST /api/atenciones/desde-cita - Creando atención desde cita: {}", idCita);
+
+            // CORRECCIÓN: El servicio 'crearDesdeCita' es VOID.
+            atencionService.crearDesdeCita(
+                    idCita, idGroomer, idSucursal, turnoNum,
+                    tiempoEstimadoInicio, tiempoEstimadoFin, prioridad
             );
+
+            // No se puede devolver la atención creada porque el SP no la devuelve.
+            // Devolvemos un mensaje de éxito.
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.exitoso("Atención creada exitosamente", atencion));
+                    .body(ApiResponse.exitoso("Atención creada exitosamente desde la cita", null));
         } catch (Exception e) {
             log.error("Error al crear atención desde cita", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error("Error al crear atención", e.getMessage()));
         }
     }
-    
+
     /**
      * POST /api/atenciones/walk-in - Crear atención walk-in
      */
     @PostMapping("/walk-in")
-    public ResponseEntity<ApiResponse<Atencion>> crearWalkIn(
+    public ResponseEntity<ApiResponse<String>> crearWalkIn(
             @RequestParam Integer idMascota,
             @RequestParam Integer idCliente,
             @RequestParam Integer idGroomer,
             @RequestParam Integer idSucursal,
-            @RequestParam LocalDateTime tiempoEstimadoInicio,
-            @RequestParam LocalDateTime tiempoEstimadoFin,
+            // CORRECCIÓN: Se añadieron los parámetros faltantes que requiere el servicio
+            @RequestParam Integer turnoNum,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime tiempoEstimadoInicio,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime tiempoEstimadoFin,
+            @RequestParam Integer prioridad,
             @RequestParam(required = false) String observaciones) {
         try {
-            log.info("POST /atenciones/walk-in - Creando atención walk-in");
-            Atencion atencion = atencionService.crearWalkIn(
-                    idMascota, idCliente, idGroomer, idSucursal, 
-                    tiempoEstimadoInicio, tiempoEstimadoFin, observaciones
+            log.info("POST /api/atenciones/walk-in - Creando atención walk-in");
+
+            // CORRECCIÓN: El servicio 'crearWalkIn' es VOID.
+            atencionService.crearWalkIn(
+                    idMascota, idCliente, idGroomer, idSucursal,
+                    turnoNum, tiempoEstimadoInicio, tiempoEstimadoFin,
+                    prioridad, observaciones
             );
+
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.exitoso("Atención walk-in creada exitosamente", atencion));
+                    .body(ApiResponse.exitoso("Atención walk-in creada exitosamente", null));
         } catch (Exception e) {
             log.error("Error al crear atención walk-in", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error("Error al crear atención", e.getMessage()));
         }
     }
-    
+
     /**
      * PUT /api/atenciones/{id}/estado - Cambiar estado
      */
@@ -154,8 +172,14 @@ public class AtencionController {
             @PathVariable Integer id,
             @RequestParam String nuevoEstado) {
         try {
-            log.info("PUT /atenciones/{}/estado - Cambiando a: {}", id, nuevoEstado);
-            Atencion actualizada = atencionService.actualizarEstado(id, nuevoEstado);
+            log.info("PUT /api/atenciones/{}/estado - Cambiando a: {}", id, nuevoEstado);
+
+            // CORRECCIÓN: El servicio 'actualizarEstado' es VOID.
+            atencionService.actualizarEstado(id, nuevoEstado);
+
+            // CORRECCIÓN: Buscamos la entidad actualizada para devolverla.
+            Atencion actualizada = atencionService.obtenerPorId(id);
+
             return ResponseEntity.ok(
                     ApiResponse.exitoso("Estado actualizado exitosamente", actualizada)
             );
@@ -165,15 +189,21 @@ public class AtencionController {
                     .body(ApiResponse.error("Error al cambiar estado", e.getMessage()));
         }
     }
-    
+
     /**
      * PUT /api/atenciones/{id}/terminar - Terminar atención
      */
     @PutMapping("/{id}/terminar")
     public ResponseEntity<ApiResponse<Atencion>> terminar(@PathVariable Integer id) {
         try {
-            log.info("PUT /atenciones/{}/terminar - Terminando atención", id);
-            Atencion actualizada = atencionService.terminar(id);
+            log.info("PUT /api/atenciones/{}/terminar - Terminando atención", id);
+
+            // CORRECCIÓN: El servicio 'terminar' (que llama a actualizarEstado) es VOID.
+            atencionService.terminar(id);
+
+            // CORRECCIÓN: Buscamos la entidad actualizada para devolverla.
+            Atencion actualizada = atencionService.obtenerPorId(id);
+
             return ResponseEntity.ok(
                     ApiResponse.exitoso("Atención terminada exitosamente", actualizada)
             );

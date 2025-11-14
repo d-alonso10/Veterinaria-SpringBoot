@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors; // <--- IMPORT REQUERIDO
 
 /**
  * Servicio para gestión de Paquetes de Servicios.
@@ -46,15 +47,16 @@ public class PaqueteServicioService {
         if (paquete == null) {
             throw new IllegalArgumentException("El paquete no puede ser nulo");
         }
-        
+
         if (paquete.getNombre() == null || paquete.getNombre().trim().isEmpty()) {
             throw new IllegalArgumentException("El nombre del paquete es requerido");
         }
-        
-        if (paquete.getPrecio() == null || paquete.getPrecio().compareTo(BigDecimal.ZERO) <= 0) {
+
+        // CORREGIDO: Usar el getter correcto 'getPrecioTotal()'
+        if (paquete.getPrecioTotal() == null || paquete.getPrecioTotal().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El precio del paquete debe ser mayor a 0");
         }
-        
+
         return paqueteRepository.save(paquete);
     }
 
@@ -65,30 +67,33 @@ public class PaqueteServicioService {
         if (idPaquete == null || idPaquete <= 0) {
             throw new IllegalArgumentException("ID de paquete inválido");
         }
-        
+
         PaqueteServicio paqueteExistente = paqueteRepository.findById(idPaquete)
                 .orElseThrow(() -> new IllegalArgumentException("Paquete no encontrado con ID: " + idPaquete));
-        
+
         if (paqueteActualizado.getNombre() != null && !paqueteActualizado.getNombre().trim().isEmpty()) {
             paqueteExistente.setNombre(paqueteActualizado.getNombre());
         }
-        
+
         if (paqueteActualizado.getDescripcion() != null) {
             paqueteExistente.setDescripcion(paqueteActualizado.getDescripcion());
         }
-        
-        if (paqueteActualizado.getPrecio() != null && paqueteActualizado.getPrecio().compareTo(BigDecimal.ZERO) > 0) {
-            paqueteExistente.setPrecio(paqueteActualizado.getPrecio());
+
+        // CORREGIDO: Usar getters/setters correctos 'getPrecioTotal()'
+        if (paqueteActualizado.getPrecioTotal() != null && paqueteActualizado.getPrecioTotal().compareTo(BigDecimal.ZERO) > 0) {
+            paqueteExistente.setPrecioTotal(paqueteActualizado.getPrecioTotal());
         }
-        
-        if (paqueteActualizado.getDescuento() != null) {
-            paqueteExistente.setDescuento(paqueteActualizado.getDescuento());
+
+        // CORREGIDO: Usar getters/setters correctos 'getDescuentoAplicado()'
+        if (paqueteActualizado.getDescuentoAplicado() != null) {
+            paqueteExistente.setDescuentoAplicado(paqueteActualizado.getDescuentoAplicado());
         }
-        
+
+        // CORREGIDO: Usar getters/setters correctos 'getEstado()'
         if (paqueteActualizado.getEstado() != null) {
             paqueteExistente.setEstado(paqueteActualizado.getEstado());
         }
-        
+
         return paqueteRepository.save(paqueteExistente);
     }
 
@@ -99,11 +104,11 @@ public class PaqueteServicioService {
         if (idPaquete == null || idPaquete <= 0) {
             throw new IllegalArgumentException("ID de paquete inválido");
         }
-        
+
         if (!paqueteRepository.existsById(idPaquete)) {
             throw new IllegalArgumentException("Paquete no encontrado con ID: " + idPaquete);
         }
-        
+
         paqueteRepository.deleteById(idPaquete);
     }
 
@@ -113,8 +118,10 @@ public class PaqueteServicioService {
     @Transactional(readOnly = true)
     public List<PaqueteServicio> obtenerActivos() {
         return paqueteRepository.findAll().stream()
-                .filter(p -> p.getEstado() != null && p.getEstado().equals("activo"))
-                .toList();
+                // CORREGIDO: Usar getter 'getEstado()'
+                .filter(p -> p.getEstado() != null && p.getEstado().toString().equalsIgnoreCase("activo")) // Usar .toString() para Enums
+                // CORREGIDO: Compatible con Java 8
+                .collect(Collectors.toList());
     }
 
     /**
@@ -125,11 +132,13 @@ public class PaqueteServicioService {
         if (idPaquete == null || idPaquete <= 0) {
             throw new IllegalArgumentException("ID de paquete inválido");
         }
-        
+
         PaqueteServicio paquete = paqueteRepository.findById(idPaquete)
                 .orElseThrow(() -> new IllegalArgumentException("Paquete no encontrado con ID: " + idPaquete));
-        
-        BigDecimal descuentoAplicado = paquete.getDescuento() != null ? paquete.getDescuento() : BigDecimal.ZERO;
-        return paquete.getPrecio().subtract(descuentoAplicado);
+
+        // CORREGIDO: Usar getter 'getDescuentoAplicado()'
+        BigDecimal descuentoAplicado = paquete.getDescuentoAplicado() != null ? paquete.getDescuentoAplicado() : BigDecimal.ZERO;
+        // CORREGIDO: Usar getter 'getPrecioTotal()'
+        return paquete.getPrecioTotal().subtract(descuentoAplicado);
     }
 }
