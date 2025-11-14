@@ -52,7 +52,7 @@ public class PaqueteServicioService {
             throw new IllegalArgumentException("El nombre del paquete es requerido");
         }
 
-        // CORREGIDO: Usar el getter correcto 'getPrecioTotal()'
+        // CORREGIDO: El campo se llama 'precioTotal'
         if (paquete.getPrecioTotal() == null || paquete.getPrecioTotal().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El precio del paquete debe ser mayor a 0");
         }
@@ -79,20 +79,16 @@ public class PaqueteServicioService {
             paqueteExistente.setDescripcion(paqueteActualizado.getDescripcion());
         }
 
-        // CORREGIDO: Usar getters/setters correctos 'getPrecioTotal()'
+        // CORREGIDO: El campo se llama 'precioTotal'
         if (paqueteActualizado.getPrecioTotal() != null && paqueteActualizado.getPrecioTotal().compareTo(BigDecimal.ZERO) > 0) {
             paqueteExistente.setPrecioTotal(paqueteActualizado.getPrecioTotal());
         }
 
-        // CORREGIDO: Usar getters/setters correctos 'getDescuentoAplicado()'
-        if (paqueteActualizado.getDescuentoAplicado() != null) {
-            paqueteExistente.setDescuentoAplicado(paqueteActualizado.getDescuentoAplicado());
-        }
+        // ELIMINADO: El campo 'descuentoAplicado' no existe en la entidad.
+        // if (paqueteActualizado.getDescuentoAplicado() != null) { ... }
 
-        // CORREGIDO: Usar getters/setters correctos 'getEstado()'
-        if (paqueteActualizado.getEstado() != null) {
-            paqueteExistente.setEstado(paqueteActualizado.getEstado());
-        }
+        // ELIMINADO: El campo 'estado' no existe en la entidad.
+        // if (paqueteActualizado.getEstado() != null) { ... }
 
         return paqueteRepository.save(paqueteExistente);
     }
@@ -114,18 +110,18 @@ public class PaqueteServicioService {
 
     /**
      * Obtener paquetes activos.
+     * ELIMINADO: El concepto de 'activo' (estado) no existe en la entidad PaqueteServicio.
+     * Este método ahora simplemente devuelve todos los paquetes.
      */
     @Transactional(readOnly = true)
     public List<PaqueteServicio> obtenerActivos() {
-        return paqueteRepository.findAll().stream()
-                // CORREGIDO: Usar getter 'getEstado()'
-                .filter(p -> p.getEstado() != null && p.getEstado().toString().equalsIgnoreCase("activo")) // Usar .toString() para Enums
-                // CORREGIDO: Compatible con Java 8
-                .collect(Collectors.toList());
+        // CORRECCIÓN: Eliminado el filtro por 'estado'
+        return paqueteRepository.findAll();
     }
 
     /**
-     * Obtener precio final del paquete con descuento aplicado.
+     * Obtener precio final del paquete.
+     * CORREGIDO: Como no hay descuento, el precio final es el precio total.
      */
     @Transactional(readOnly = true)
     public BigDecimal obtenerPrecioFinal(Integer idPaquete) {
@@ -136,9 +132,7 @@ public class PaqueteServicioService {
         PaqueteServicio paquete = paqueteRepository.findById(idPaquete)
                 .orElseThrow(() -> new IllegalArgumentException("Paquete no encontrado con ID: " + idPaquete));
 
-        // CORREGIDO: Usar getter 'getDescuentoAplicado()'
-        BigDecimal descuentoAplicado = paquete.getDescuentoAplicado() != null ? paquete.getDescuentoAplicado() : BigDecimal.ZERO;
-        // CORREGIDO: Usar getter 'getPrecioTotal()'
-        return paquete.getPrecioTotal().subtract(descuentoAplicado);
+        // CORREGIDO: Devuelve 'precioTotal' ya que 'descuentoAplicado' no existe.
+        return paquete.getPrecioTotal();
     }
 }
