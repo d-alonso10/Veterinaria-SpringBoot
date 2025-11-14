@@ -24,8 +24,11 @@ El sistema gestiona:
 - **Base de Datos:** MySQL 8.0
 - **Gestor de Dependencias:** Maven 3.6+
 - **ORM:** Spring Data JPA / Hibernate
-- **Autenticación:** JWT (JSON Web Tokens)
+- **Autenticación:** JWT (JSON Web Tokens) ✅ IMPLEMENTADO
+- **Seguridad:** Spring Security + BCrypt
+- **API Documentation:** Swagger/OpenAPI (springdoc-openapi v2.0.2)
 - **Logging:** SLF4J + Logback
+- **Testing:** Postman (13 tests integrados)
 - **IDE Recomendada:** NetBeans 8.2+ o IntelliJ IDEA / Eclipse
 
 ## 📁 Estructura del Proyecto
