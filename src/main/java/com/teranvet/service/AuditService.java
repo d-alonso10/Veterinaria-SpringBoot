@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors; // <--- IMPORT IMPORTANTE AÑADIDO
 
 /**
  * Servicio para gestión de Logs de Auditoría.
@@ -49,7 +50,7 @@ public class AuditService {
         }
         return auditRepository.findAll().stream()
                 .filter(log -> log.getIdUsuario() != null && log.getIdUsuario().equals(idUsuario))
-                .toList();
+                .collect(Collectors.toList()); // <--- CORREGIDO: .toList() a .collect(...)
     }
 
     /**
@@ -61,9 +62,9 @@ public class AuditService {
             throw new IllegalArgumentException("La fecha es requerida");
         }
         return auditRepository.findAll().stream()
-                .filter(log -> log.getTimestamp() != null && 
-                       log.getTimestamp().toLocalDate().equals(fecha))
-                .toList();
+                .filter(log -> log.getTimestamp() != null &&
+                        log.getTimestamp().toLocalDate().equals(fecha))
+                .collect(Collectors.toList()); // <--- CORREGIDO: .toList() a .collect(...)
     }
 
     /**
@@ -75,9 +76,10 @@ public class AuditService {
             throw new IllegalArgumentException("La acción es requerida");
         }
         return auditRepository.findAll().stream()
-                .filter(log -> log.getAccion() != null && 
-                       log.getAccion().equalsIgnoreCase(accion))
-                .toList();
+                // CORREGIDO: Se convierte el Enum a String con .name() antes de comparar
+                .filter(log -> log.getAccion() != null &&
+                        log.getAccion().name().equalsIgnoreCase(accion))
+                .collect(Collectors.toList()); // <--- CORREGIDO: .toList() a .collect(...)
     }
 
     /**
@@ -97,11 +99,11 @@ public class AuditService {
         if (idLog == null || idLog <= 0) {
             throw new IllegalArgumentException("ID de log inválido");
         }
-        
+
         if (!auditRepository.existsById(idLog)) {
             throw new IllegalArgumentException("Log no encontrado con ID: " + idLog);
         }
-        
+
         auditRepository.deleteById(idLog);
     }
 
@@ -115,6 +117,6 @@ public class AuditService {
         }
         return auditRepository.findAll().stream()
                 .limit(limite)
-                .toList();
+                .collect(Collectors.toList()); // <--- CORREGIDO: .toList() a .collect(...)
     }
 }

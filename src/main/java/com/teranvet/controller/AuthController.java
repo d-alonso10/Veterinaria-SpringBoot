@@ -45,56 +45,60 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest loginRequest) {
         try {
             logger.info("Intento de login con email: {}", loginRequest != null ? loginRequest.getEmail() : "null");
-            
+
             // Validar entrada
-            if (loginRequest == null || loginRequest.getEmail() == null || loginRequest.getPasswordHash() == null) {
+            // CORREGIDO: Se usa getPassword()
+            if (loginRequest == null || loginRequest.getEmail() == null || loginRequest.getPassword() == null) {
                 logger.warn("Datos incompletos en login request");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(ApiResponse.error("Email y contraseña son requeridos"));
             }
-            
-            if (loginRequest.getEmail().trim().isEmpty() || loginRequest.getPasswordHash().trim().isEmpty()) {
+
+            // CORREGIDO: Se usa getPassword()
+            if (loginRequest.getEmail().trim().isEmpty() || loginRequest.getPassword().trim().isEmpty()) {
                 logger.warn("Email o contraseña vacíos");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(ApiResponse.error("Email y contraseña no pueden estar vacíos"));
             }
-            
+
             // Validar credenciales
+            // CORREGIDO: Se usa getPassword()
             Optional<UsuarioSistema> usuario = usuarioService.validarCredenciales(
                     loginRequest.getEmail(),
-                    loginRequest.getPasswordHash()
+                    loginRequest.getPassword()
             );
-            
+
             if (usuario.isPresent()) {
                 UsuarioSistema usuarioAutenticado = usuario.get();
                 logger.info("Login exitoso para usuario: {}", usuarioAutenticado.getNombre());
-                
+
                 // Generar JWT token
+                // CORREGIDO: Se convierte Integer (getIdUsuario) a Long y se usa .name() para el Rol.
                 String jwtToken = tokenProvider.generateToken(
-                        usuarioAutenticado.getIdUsuario(),
+                        Long.valueOf(usuarioAutenticado.getIdUsuario()),
                         usuarioAutenticado.getNombre(),
-                        usuarioAutenticado.getRol().toString()
+                        usuarioAutenticado.getRol().name()
                 );
-                
+
                 logger.debug("JWT token generado para usuario: {}", usuarioAutenticado.getNombre());
-                
+
                 // Construcción de LoginResponse con JWT
                 LoginResponse response = new LoginResponse();
                 response.setIdUsuario(usuarioAutenticado.getIdUsuario());
                 response.setNombre(usuarioAutenticado.getNombre());
                 response.setEmail(usuarioAutenticado.getEmail());
-                response.setRol(usuarioAutenticado.getRol() != null ? usuarioAutenticado.getRol().toString() : "");
+                response.setRol(usuarioAutenticado.getRol() != null ? usuarioAutenticado.getRol().name() : "");
                 response.setMensaje("Login exitoso");
                 response.setToken(jwtToken);  // Agregar token JWT
                 response.setTokenType("Bearer");
-                
+
                 return ResponseEntity.ok(ApiResponse.exitoso("Autenticación exitosa", response));
             } else {
                 logger.warn("Credenciales inválidas para email: {}", loginRequest.getEmail());
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(ApiResponse.error("Credenciales inválidas"));
             }
-            
+
         } catch (IllegalArgumentException e) {
             logger.error("Error de validación en login: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -120,13 +124,13 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(ApiResponse.error("El email es requerido"));
             }
-            
+
             Optional<UsuarioSistema> usuario = usuarioService.obtenerPorEmail(email);
             boolean existe = usuario.isPresent();
-            
+
             String mensaje = existe ? "Usuario encontrado" : "Usuario no encontrado";
             return ResponseEntity.ok(ApiResponse.exitoso(mensaje, existe));
-            
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error(e.getMessage()));
@@ -170,15 +174,15 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(ApiResponse.error("ID de usuario inválido"));
             }
-            
+
             if (request == null || request.getNuevaContraseña() == null || request.getNuevaContraseña().trim().isEmpty()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(ApiResponse.error("La nueva contraseña es requerida"));
             }
-            
+
             UsuarioSistema usuario = usuarioService.cambiarContraseña(idUsuario, request.getNuevaContraseña());
             return ResponseEntity.ok(ApiResponse.exitoso("Contraseña actualizada correctamente", usuario));
-            
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error(e.getMessage()));

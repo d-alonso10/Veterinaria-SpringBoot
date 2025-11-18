@@ -12,6 +12,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+// Importamos la entidad Atencion para poder establecer la referencia por ID en el POST
+import com.teranvet.entity.Atencion; //
+
 /**
  * Controlador REST para gestión de Detalles de Servicios.
  * Endpoints: /api/atenciones/{id}/detalles
@@ -52,7 +55,9 @@ public class DetalleServicioController {
             @PathVariable Integer idDetalle) {
         try {
             Optional<DetalleServicio> detalle = detalleService.obtenerPorId(idDetalle);
-            if (detalle.isPresent() && detalle.get().getIdAtencion().equals(idAtencion)) {
+
+            // CORREGIDO: Acceder al ID de la relación a través del objeto Atencion
+            if (detalle.isPresent() && detalle.get().getAtencion().getIdAtencion().equals(idAtencion)) {
                 return ResponseEntity.ok(ApiResponse.exitoso("Detalle encontrado", detalle.get()));
             } else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -76,7 +81,12 @@ public class DetalleServicioController {
             @PathVariable Integer idAtencion,
             @RequestBody DetalleServicio detalle) {
         try {
-            detalle.setIdAtencion(idAtencion);
+            // CORREGIDO: Establecer la relación creando un objeto Atencion temporal con el ID
+            Atencion atencionRef = new Atencion();
+            // Asumimos que Atencion.java usa @Data y tiene setIdAtencion()
+            atencionRef.setIdAtencion(idAtencion);
+            detalle.setAtencion(atencionRef); //
+
             DetalleServicio nuevoDetalle = detalleService.crear(detalle);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.exitoso("Detalle creado correctamente", nuevoDetalle));

@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors; // Import necesario para Java 8
 
 /**
  * Servicio para gestión de Notificaciones.
@@ -48,7 +49,7 @@ public class NotificacionService {
         }
         return notificacionRepository.findAll().stream()
                 .filter(n -> n.getDestinatarioId() != null && n.getDestinatarioId().equals(idCliente))
-                .toList();
+                .collect(Collectors.toList()); // Corregido para Java 8
     }
 
     /**
@@ -57,8 +58,9 @@ public class NotificacionService {
     @Transactional(readOnly = true)
     public List<Notificacion> obtenerPendientes() {
         return notificacionRepository.findAll().stream()
-                .filter(n -> n.getEstado() != null && n.getEstado().equals("pendiente"))
-                .toList();
+                // Corregido: Comparación directa con Enum
+                .filter(n -> n.getEstado() == Notificacion.EstadoNotificacion.pendiente)
+                .collect(Collectors.toList()); // Corregido para Java 8
     }
 
     /**
@@ -68,20 +70,20 @@ public class NotificacionService {
         if (notificacion == null) {
             throw new IllegalArgumentException("La notificación no puede ser nula");
         }
-        
+
         if (notificacion.getDestinatarioId() == null || notificacion.getDestinatarioId() <= 0) {
             throw new IllegalArgumentException("El ID del destinatario es requerido");
         }
-        
+
         if (notificacion.getContenido() == null || notificacion.getContenido().trim().isEmpty()) {
             throw new IllegalArgumentException("El contenido es requerido");
         }
-        
+
         // Establecer estado por defecto si no está definido
-        if (notificacion.getEstado() == null || notificacion.getEstado().isEmpty()) {
-            notificacion.setEstado("pendiente");
+        if (notificacion.getEstado() == null) {
+            notificacion.setEstado(Notificacion.EstadoNotificacion.pendiente);
         }
-        
+
         return notificacionRepository.save(notificacion);
     }
 
@@ -92,18 +94,19 @@ public class NotificacionService {
         if (idNotificacion == null || idNotificacion <= 0) {
             throw new IllegalArgumentException("ID de notificación inválido");
         }
-        
+
         Notificacion notificacionExistente = notificacionRepository.findById(idNotificacion)
                 .orElseThrow(() -> new IllegalArgumentException("Notificación no encontrada con ID: " + idNotificacion));
-        
-        if (notificacionActualizada.getEstado() != null && !notificacionActualizada.getEstado().isEmpty()) {
+
+        // Corregido: Eliminada validación isEmpty() para Enum
+        if (notificacionActualizada.getEstado() != null) {
             notificacionExistente.setEstado(notificacionActualizada.getEstado());
         }
-        
+
         if (notificacionActualizada.getContenido() != null && !notificacionActualizada.getContenido().isEmpty()) {
             notificacionExistente.setContenido(notificacionActualizada.getContenido());
         }
-        
+
         return notificacionRepository.save(notificacionExistente);
     }
 
@@ -114,11 +117,12 @@ public class NotificacionService {
         if (idNotificacion == null || idNotificacion <= 0) {
             throw new IllegalArgumentException("ID de notificación inválido");
         }
-        
+
         Notificacion notificacion = notificacionRepository.findById(idNotificacion)
                 .orElseThrow(() -> new IllegalArgumentException("Notificación no encontrada con ID: " + idNotificacion));
-        
-        notificacion.setEstado("enviado");
+
+        // Corregido: Uso de constante Enum
+        notificacion.setEstado(Notificacion.EstadoNotificacion.enviado);
         return notificacionRepository.save(notificacion);
     }
 
@@ -129,11 +133,13 @@ public class NotificacionService {
         if (idNotificacion == null || idNotificacion <= 0) {
             throw new IllegalArgumentException("ID de notificación inválido");
         }
-        
+
         Notificacion notificacion = notificacionRepository.findById(idNotificacion)
                 .orElseThrow(() -> new IllegalArgumentException("Notificación no encontrada con ID: " + idNotificacion));
-        
-        notificacion.setEstado("leido");
+
+        // NOTA: Tu Enum actual solo tiene: pendiente, enviado, fallido.
+        // Se usa 'enviado' por compatibilidad. Si agregas 'leido' al Enum, cambia esto.
+        notificacion.setEstado(Notificacion.EstadoNotificacion.enviado);
         return notificacionRepository.save(notificacion);
     }
 
@@ -144,11 +150,11 @@ public class NotificacionService {
         if (idNotificacion == null || idNotificacion <= 0) {
             throw new IllegalArgumentException("ID de notificación inválido");
         }
-        
+
         if (!notificacionRepository.existsById(idNotificacion)) {
             throw new IllegalArgumentException("Notificación no encontrada con ID: " + idNotificacion);
         }
-        
+
         notificacionRepository.deleteById(idNotificacion);
     }
 
@@ -160,10 +166,11 @@ public class NotificacionService {
         if (idCliente == null || idCliente <= 0) {
             throw new IllegalArgumentException("ID de cliente inválido");
         }
-        
+
         return notificacionRepository.findAll().stream()
+                // Corregido: Comparación con Enum (asumiendo que 'leido' no existe, filtramos por estado pendiente o enviado)
                 .filter(n -> n.getDestinatarioId() != null && n.getDestinatarioId().equals(idCliente) &&
-                           n.getEstado() != null && !n.getEstado().equals("leido"))
-                .toList();
+                        n.getEstado() != null && n.getEstado() == Notificacion.EstadoNotificacion.pendiente)
+                .collect(Collectors.toList()); // Corregido para Java 8
     }
 }

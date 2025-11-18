@@ -43,7 +43,8 @@ public class CustomUserDetailsService implements UserDetailsService {
                 usuario.getEmail(),
                 usuario.getPasswordHash(),
                 Collections.singletonList(
-                        new SimpleGrantedAuthority("ROLE_" + usuario.getRol().toUpperCase())
+                        // CORREGIDO: Se obtiene el nombre del Enum (.name()) antes de convertir a mayúsculas
+                        new SimpleGrantedAuthority("ROLE_" + usuario.getRol().name().toUpperCase())
                 )
         );
     }
