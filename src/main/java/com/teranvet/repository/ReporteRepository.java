@@ -1,5 +1,6 @@
 package com.teranvet.repository;
 
+import com.teranvet.entity.Cliente; // Importamos una entidad gestionada para satisfacer a JPA
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,7 +15,9 @@ import java.util.Map;
  * Mapea SPs para generación de reportes y métricas.
  */
 @Repository
-public interface ReporteRepository extends JpaRepository<Map, Integer> {
+// CORREGIDO: Usamos Cliente como entidad base para inicializar JPA,
+// ya que las consultas son nativas (nativeQuery = true) y devuelven List<Map>.
+public interface ReporteRepository extends JpaRepository<Cliente, Integer> {
 
     /**
      * Obtener reporte de ingresos por rango de fechas.
