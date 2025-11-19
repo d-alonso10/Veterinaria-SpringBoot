@@ -21,18 +21,18 @@ public class JwtTokenProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
 
-    @Value("${jwt.secret:TeranVetSecretKeyForJWTTokenGenerationAndValidation2025}")
+    @Value("${jwt.secret:5367566B59703373367639792F423F4528482B4D6251655468576D5A7134743777217A25432A462D4A614E635266556A586E3272357538782F413F4428472B4B}")
     private String jwtSecret;
 
-    @Value("${jwt.expiration:86400000}")  // 24 horas en milisegundos
+    @Value("${jwt.expiration:86400000}") // 24 horas en milisegundos
     private int jwtExpirationMs;
 
     /**
      * Genera un JWT token con la información del usuario
      *
-     * @param idUsuario ID del usuario autenticado
+     * @param idUsuario     ID del usuario autenticado
      * @param nombreUsuario Nombre del usuario
-     * @param rol Rol del usuario (recepcionista, admin, groomer, etc)
+     * @param rol           Rol del usuario (recepcionista, admin, groomer, etc)
      * @return Token JWT generado
      */
     public String generateToken(Long idUsuario, String nombreUsuario, String rol) {

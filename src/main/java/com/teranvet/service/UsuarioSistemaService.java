@@ -5,6 +5,7 @@ import com.teranvet.repository.UsuarioSistemaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +21,9 @@ public class UsuarioSistemaService {
 
     @Autowired
     private UsuarioSistemaRepository usuarioRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     /**
      * Obtener todos los usuarios del sistema.
@@ -69,32 +73,35 @@ public class UsuarioSistemaService {
         if (usuario == null) {
             throw new IllegalArgumentException("El usuario no puede ser nulo");
         }
-        
+
         // Validaciones
         if (usuario.getNombre() == null || usuario.getNombre().trim().isEmpty()) {
             throw new IllegalArgumentException("El nombre del usuario es requerido");
         }
-        
+
         if (usuario.getEmail() == null || usuario.getEmail().trim().isEmpty()) {
             throw new IllegalArgumentException("El email del usuario es requerido");
         }
-        
+
         if (usuario.getPasswordHash() == null || usuario.getPasswordHash().trim().isEmpty()) {
             throw new IllegalArgumentException("La contraseña del usuario es requerida");
         }
-        
+
         // Validar que el email sea único
         if (usuarioRepository.findByEmail(usuario.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Ya existe un usuario con el email: " + usuario.getEmail());
         }
-        
+
+        // Encriptar contraseña
+        usuario.setPasswordHash(passwordEncoder.encode(usuario.getPasswordHash()));
+
         return usuarioRepository.save(usuario);
     }
 
     /**
      * Actualizar un usuario existente.
      *
-     * @param idUsuario ID del usuario a actualizar
+     * @param idUsuario          ID del usuario a actualizar
      * @param usuarioActualizado Datos actualizados
      * @return Usuario actualizado
      */
@@ -102,14 +109,14 @@ public class UsuarioSistemaService {
         if (idUsuario == null || idUsuario <= 0) {
             throw new IllegalArgumentException("ID de usuario inválido");
         }
-        
+
         UsuarioSistema usuarioExistente = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con ID: " + idUsuario));
-        
+
         if (usuarioActualizado.getNombre() != null && !usuarioActualizado.getNombre().trim().isEmpty()) {
             usuarioExistente.setNombre(usuarioActualizado.getNombre());
         }
-        
+
         if (usuarioActualizado.getEmail() != null && !usuarioActualizado.getEmail().trim().isEmpty()) {
             String nuevoEmail = usuarioActualizado.getEmail();
             // Verificar que el nuevo email no esté en uso por otro usuario
@@ -119,15 +126,15 @@ public class UsuarioSistemaService {
             }
             usuarioExistente.setEmail(nuevoEmail);
         }
-        
+
         if (usuarioActualizado.getRol() != null) {
             usuarioExistente.setRol(usuarioActualizado.getRol());
         }
-        
+
         if (usuarioActualizado.getPasswordHash() != null && !usuarioActualizado.getPasswordHash().trim().isEmpty()) {
-            usuarioExistente.setPasswordHash(usuarioActualizado.getPasswordHash());
+            usuarioExistente.setPasswordHash(passwordEncoder.encode(usuarioActualizado.getPasswordHash()));
         }
-        
+
         return usuarioRepository.save(usuarioExistente);
     }
 
@@ -140,11 +147,11 @@ public class UsuarioSistemaService {
         if (idUsuario == null || idUsuario <= 0) {
             throw new IllegalArgumentException("ID de usuario inválido");
         }
-        
+
         if (!usuarioRepository.existsById(idUsuario)) {
             throw new IllegalArgumentException("Usuario no encontrado con ID: " + idUsuario);
         }
-        
+
         usuarioRepository.deleteById(idUsuario);
     }
 
@@ -159,7 +166,7 @@ public class UsuarioSistemaService {
         if (rol == null || rol.trim().isEmpty()) {
             throw new IllegalArgumentException("El rol es requerido");
         }
-        
+
         return usuarioRepository.findAll().stream()
                 .filter(u -> u.getRol() != null && u.getRol().toString().equalsIgnoreCase(rol))
                 .collect(Collectors.toList());
@@ -168,26 +175,49 @@ public class UsuarioSistemaService {
     /**
      * Validar credenciales de usuario.
      *
-     * @param email Email del usuario
+     * @param email        Email del usuario
      * @param passwordHash Hash de la contraseña
      * @return Optional con el usuario si las credenciales son válidas
      */
-    @Transactional(readOnly = true)
-    public Optional<UsuarioSistema> validarCredenciales(String email, String passwordHash) {
+    /**
+     * Validar credenciales de usuario.
+     * Soporta migración "lazy" de contraseñas en texto plano a BCrypt.
+     *
+     * @param email       Email del usuario
+     * @param rawPassword Contraseña en texto plano
+     * @return Optional con el usuario si las credenciales son válidas
+     */
+    public Optional<UsuarioSistema> validarCredenciales(String email, String rawPassword) {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("El email es requerido");
         }
-        
-        if (passwordHash == null || passwordHash.trim().isEmpty()) {
+
+        if (rawPassword == null || rawPassword.trim().isEmpty()) {
             throw new IllegalArgumentException("La contraseña es requerida");
         }
-        
-        Optional<UsuarioSistema> usuario = usuarioRepository.findByEmail(email);
-        
-        if (usuario.isPresent() && usuario.get().getPasswordHash().equals(passwordHash)) {
-            return usuario;
+
+        Optional<UsuarioSistema> usuarioOpt = usuarioRepository.findByEmail(email);
+
+        if (usuarioOpt.isPresent()) {
+            UsuarioSistema usuario = usuarioOpt.get();
+            String storedPassword = usuario.getPasswordHash();
+
+            // 1. Verificar si es un hash BCrypt válido (comienza con $2a$)
+            if (passwordEncoder.matches(rawPassword, storedPassword)) {
+                return usuarioOpt;
+            }
+
+            // 2. Si falla, verificar si es texto plano (Legacy)
+            // Esto permite que los usuarios antiguos sigan entrando y se migren
+            // automáticamente
+            if (storedPassword.equals(rawPassword)) {
+                // Migración automática: Encriptar y guardar
+                usuario.setPasswordHash(passwordEncoder.encode(rawPassword));
+                usuarioRepository.save(usuario);
+                return usuarioOpt;
+            }
         }
-        
+
         return Optional.empty();
     }
 
@@ -208,7 +238,7 @@ public class UsuarioSistemaService {
     /**
      * Cambiar contraseña de un usuario.
      *
-     * @param idUsuario ID del usuario
+     * @param idUsuario       ID del usuario
      * @param nuevaContraseña Nueva contraseña (hash)
      * @return Usuario actualizado
      */
@@ -216,15 +246,15 @@ public class UsuarioSistemaService {
         if (idUsuario == null || idUsuario <= 0) {
             throw new IllegalArgumentException("ID de usuario inválido");
         }
-        
+
         if (nuevaContraseña == null || nuevaContraseña.trim().isEmpty()) {
             throw new IllegalArgumentException("La nueva contraseña no puede estar vacía");
         }
-        
+
         UsuarioSistema usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con ID: " + idUsuario));
-        
-        usuario.setPasswordHash(nuevaContraseña);
+
+        usuario.setPasswordHash(passwordEncoder.encode(nuevaContraseña));
         return usuarioRepository.save(usuario);
     }
 }
