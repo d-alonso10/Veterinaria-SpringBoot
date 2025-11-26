@@ -431,10 +431,7 @@ INSERT INTO `configuracion_estimacion` (`id_servicio`, `id_groomer`, `tiempo_est
 COMMIT;
 
 -- ===================================================================================
--- 3. PROCEDIMIENTOS ALMACENADOS (Los mismos que proporcionaste, ya definidos)
--- * Se asume que las correcciones necesarias se aplican directamente en el Workbench
--- * al ejecutar este script, como las referencias a `updated_at` y las cláusulas `SET`
--- * faltantes en algunos `UPDATE`.
+-- 3. PROCEDIMIENTOS ALMACENADOS (Actualizado con el nuevo sp_ObtenerMetricasDashboard)
 -- ===================================================================================
 
 SET FOREIGN_KEY_CHECKS=1; -- Vuelve a habilitar la verificación de FK
@@ -875,31 +872,38 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_ObtenerMascotasPorCliente` (IN `
      ORDER BY m.nombre;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_ObtenerMetricasDashboard` (IN `p_fecha_inicio` DATE, IN `p_fecha_fin` DATE)
-    BEGIN
-     -- Total de clientes
-     SELECT COUNT(*) AS total_clientes FROM cliente;
+-- NUEVO PROCEDIMIENTO ACTUALIZADO: sp_ObtenerMetricasDashboard
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_ObtenerMetricasDashboard` (
+    IN `p_fecha_inicio` DATE,
+    IN `p_fecha_fin` DATE
+)
+BEGIN
+    -- Retornar TODAS las métricas en UN SOLO result set
+    SELECT
+        -- Total de clientes
+        (SELECT COUNT(*) FROM cliente) AS total_clientes,
 
-     -- Total de mascotas
-     SELECT COUNT(*) AS total_mascotas FROM mascota;
+        -- Total de mascotas
+        (SELECT COUNT(*) FROM mascota) AS total_mascotas,
 
-     -- Citas del día
-     SELECT COUNT(*) AS citas_hoy
-     FROM cita
-     WHERE DATE(fecha_programada) = CURDATE()
-     AND estado IN ('reservada','confirmada');
+        -- Citas del día (usa las fechas de parámetro o CURDATE)
+        (SELECT COUNT(*)
+         FROM cita
+         WHERE DATE(fecha_programada) BETWEEN COALESCE(p_fecha_inicio, CURDATE())
+                                          AND COALESCE(p_fecha_fin, CURDATE())
+         AND estado IN ('reservada','confirmada')) AS citas_hoy,
 
-     -- Ingresos del mes
-     SELECT COALESCE(SUM(total), 0) AS ingresos_mes
-     FROM factura
-     WHERE estado IN ('emitida', 'pagada')
-     AND MONTH(fecha_emision) = MONTH(CURDATE())
-     AND YEAR(fecha_emision) = YEAR(CURDATE());
+        -- Ingresos del período (usa las fechas de parámetro)
+        (SELECT COALESCE(SUM(total), 0)
+         FROM factura
+         WHERE estado IN ('emitida', 'pagada')
+         AND DATE(fecha_emision) BETWEEN COALESCE(p_fecha_inicio, DATE(DATE_SUB(NOW(), INTERVAL 30 DAY)))
+                                    AND COALESCE(p_fecha_fin, CURDATE())) AS ingresos_periodo,
 
-     -- Atenciones en curso
-     SELECT COUNT(*) AS atenciones_curso
-     FROM atencion
-     WHERE estado IN ('en_espera','en_servicio');
+        -- Atenciones en curso
+        (SELECT COUNT(*)
+         FROM atencion
+         WHERE estado IN ('en_espera','en_servicio')) AS atenciones_en_curso;
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_ObtenerNotificacionesCliente` (IN `p_destinatario_id` INT, IN `p_limite` INT)

@@ -70,6 +70,6 @@ public class Pago implements Serializable {
     }
     
     public enum Estado {
-        pendiente, confirmado, rechazado
+        confirmado, pendiente, fallido
     }
 }

@@ -17,10 +17,10 @@ import java.util.stream.Collectors;
 @Transactional
 @Slf4j
 public class ClienteService {
-    
+
     @Autowired
     private ClienteRepository clienteRepository;
-    
+
     /**
      * Obtiene todos los clientes
      */
@@ -30,7 +30,7 @@ public class ClienteService {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
-    
+
     /**
      * Obtiene un cliente por ID
      */
@@ -40,7 +40,7 @@ public class ClienteService {
                 .map(this::convertToDTO)
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
     }
-    
+
     /**
      * Busca clientes por término (nombre, apellido, DNI)
      */
@@ -50,7 +50,7 @@ public class ClienteService {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
-    
+
     /**
      * Obtiene un cliente por DNI/RUC
      */
@@ -60,36 +60,58 @@ public class ClienteService {
                 .map(this::convertToDTO)
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
     }
-    
+
     /**
      * Crea un nuevo cliente
      */
     public ClienteDTO crear(ClienteDTO clienteDTO) {
         log.info("Creando nuevo cliente: {}", clienteDTO.getNombre());
-        
-        // Validar que el DNI/RUC sea único
-        if (clienteRepository.findByDniRuc(clienteDTO.getDniRuc()).isPresent()) {
+
+        // Validar que el DNI/RUC sea único (solo si no es null)
+        if (clienteDTO.getDniRuc() != null &&
+                clienteRepository.findByDniRuc(clienteDTO.getDniRuc()).isPresent()) {
             throw new RuntimeException("El DNI/RUC ya existe en el sistema");
         }
-        
+
         Cliente cliente = convertToEntity(clienteDTO);
         cliente.setCreatedAt(LocalDateTime.now());
         cliente.setUpdatedAt(LocalDateTime.now());
-        
+
         Cliente guardado = clienteRepository.save(cliente);
         log.info("Cliente creado exitosamente con ID: {}", guardado.getIdCliente());
         return convertToDTO(guardado);
     }
-    
+
     /**
      * Actualiza un cliente existente
      */
     public ClienteDTO actualizar(Integer idCliente, ClienteDTO clienteDTO) {
         log.info("Actualizando cliente con ID: {}", idCliente);
-        
+
         Cliente cliente = clienteRepository.findById(idCliente)
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
-        
+
+        // Validar DNI/RUC solo si cambió (manejando NULLs correctamente)
+        String dniActual = cliente.getDniRuc();
+        String dniNuevo = clienteDTO.getDniRuc();
+
+        // Comparar manejando NULLs correctamente
+        boolean dniCambio = (dniActual == null && dniNuevo != null) ||
+                (dniActual != null && !dniActual.equals(dniNuevo));
+
+        if (dniCambio) {
+            log.info("DNI cambió de '{}' a '{}'", dniActual, dniNuevo);
+
+            // Validar que el nuevo DNI no exista (solo si no es NULL)
+            if (dniNuevo != null) {
+                Optional<Cliente> clienteConMismoDni = clienteRepository.findByDniRuc(dniNuevo);
+                if (clienteConMismoDni.isPresent()) {
+                    throw new RuntimeException("El DNI/RUC ya existe en el sistema");
+                }
+            }
+            cliente.setDniRuc(dniNuevo);
+        }
+
         cliente.setNombre(clienteDTO.getNombre());
         cliente.setApellido(clienteDTO.getApellido());
         cliente.setEmail(clienteDTO.getEmail());
@@ -97,26 +119,26 @@ public class ClienteService {
         cliente.setDireccion(clienteDTO.getDireccion());
         cliente.setPreferencias(clienteDTO.getPreferencias());
         cliente.setUpdatedAt(LocalDateTime.now());
-        
+
         Cliente actualizado = clienteRepository.save(cliente);
-        log.info("Cliente actualizado exitosamente");
+        log.info("Cliente actualizado exitosamente con DNI: {}", actualizado.getDniRuc());
         return convertToDTO(actualizado);
     }
-    
+
     /**
      * Elimina un cliente
      */
     public void eliminar(Integer idCliente) {
         log.info("Eliminando cliente con ID: {}", idCliente);
-        
+
         if (!clienteRepository.existsById(idCliente)) {
             throw new RuntimeException("Cliente no encontrado");
         }
-        
+
         clienteRepository.deleteById(idCliente);
         log.info("Cliente eliminado exitosamente");
     }
-    
+
     /**
      * Convierte Cliente a ClienteDTO
      */
@@ -129,10 +151,9 @@ public class ClienteService {
                 cliente.getEmail(),
                 cliente.getTelefono(),
                 cliente.getDireccion(),
-                cliente.getPreferencias()
-        );
+                cliente.getPreferencias());
     }
-    
+
     /**
      * Convierte ClienteDTO a Cliente
      */

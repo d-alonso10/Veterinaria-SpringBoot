@@ -77,6 +77,11 @@ public class Cita implements Serializable {
     }
 
     public enum Estado {
-        reservada, confirmada, asistio, cancelada, no_show
+        // Valores corregidos para coincidir con la Base de Datos (vet_teran_mysql.sql)
+        reservada,
+        confirmada,
+        cancelada,
+        no_asistio, // Antes era 'no_show' en Java, pero en BD es 'no_asistio'
+        atendido // Este es el que faltaba y causaba el error
     }
 }

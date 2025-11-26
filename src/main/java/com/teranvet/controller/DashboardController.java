@@ -1,6 +1,7 @@
 package com.teranvet.controller;
 
 import com.teranvet.dto.ApiResponse;
+import com.teranvet.dto.MetricasDashboardDTO;
 import com.teranvet.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -13,9 +14,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Controlador REST para el Dashboard.
- * Endpoints: /api/dashboard
- * Proporciona métricas rápidas y vistas de datos agregados.
+ * Controlador REST para operaciones del Dashboard.
+ * Expone endpoints para métricas, estadísticas y reportes del dashboard.
  */
 @RestController
 @RequestMapping("/api/dashboard")
@@ -28,16 +28,21 @@ public class DashboardController {
     /**
      * GET /api/dashboard/metricas
      * Obtener métricas generales del dashboard.
+     * 
+     * @param fechaInicio Fecha de inicio del período (default: 2025-01-01)
+     * @param fechaFin    Fecha de fin del período (default: hoy)
+     * @return MetricasDashboardDTO con 5 métricas: total_clientes, total_mascotas,
+     *         citas_hoy, ingresos_periodo, atenciones_en_curso
      */
     @GetMapping("/metricas")
-    public ResponseEntity<ApiResponse<List<Map>>> obtenerMetricas(
+    public ResponseEntity<ApiResponse<MetricasDashboardDTO>> obtenerMetricas(
             @RequestParam(defaultValue = "2025-01-01") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
         try {
-            // Si no se proporciona fechaFin, usar hoy
+            // Si no se proporciona fechaFin, el Service usará LocalDate.now()
             LocalDate fin = fechaFin != null ? fechaFin : LocalDate.now();
-            
-            List<Map> metricas = dashboardService.obtenerMetricas(fechaInicio, fin);
+
+            MetricasDashboardDTO metricas = dashboardService.obtenerMetricas(fechaInicio, fin);
             return ResponseEntity.ok(ApiResponse.exitoso("Métricas obtenidas correctamente", metricas));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -76,7 +81,8 @@ public class DashboardController {
             @RequestParam Integer mes) {
         try {
             List<Map> estadisticas = dashboardService.obtenerEstadisticasMensuales(anio, mes);
-            return ResponseEntity.ok(ApiResponse.exitoso("Estadísticas mensuales obtenidas correctamente", estadisticas));
+            return ResponseEntity
+                    .ok(ApiResponse.exitoso("Estadísticas mensuales obtenidas correctamente", estadisticas));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error(e.getMessage()));
