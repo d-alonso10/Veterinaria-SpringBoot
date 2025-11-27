@@ -37,7 +37,7 @@ public interface AtencionRepository extends JpaRepository<Atencion, Integer> {
     @Transactional
     @Query(value = "CALL sp_CrearAtencionDesdeCita(:idCita, :idGroomer, :idSucursal, :turnoNum, " +
             ":tiempoEstimadoInicio, :tiempoEstimadoFin, :prioridad)", nativeQuery = true)
-    void crearAtencionDesdeCita(
+    Atencion crearAtencionDesdeCita(
             @Param("idCita") Integer idCita,
             @Param("idGroomer") Integer idGroomer,
             @Param("idSucursal") Integer idSucursal,
@@ -54,7 +54,7 @@ public interface AtencionRepository extends JpaRepository<Atencion, Integer> {
     @Transactional
     @Query(value = "CALL sp_CrearAtencionWalkIn(:idMascota, :idCliente, :idGroomer, :idSucursal, " +
             ":turnoNum, :tiempoEstimadoInicio, :tiempoEstimadoFin, :prioridad, :observaciones)", nativeQuery = true)
-    void crearAtencionWalkIn(
+    Atencion crearAtencionWalkIn(
             @Param("idMascota") Integer idMascota,
             @Param("idCliente") Integer idCliente,
             @Param("idGroomer") Integer idGroomer,

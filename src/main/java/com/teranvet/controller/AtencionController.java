@@ -3,6 +3,7 @@ package com.teranvet.controller;
 import com.teranvet.dto.ApiResponse;
 import com.teranvet.entity.Atencion;
 import com.teranvet.service.AtencionService;
+import com.teranvet.service.CitaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat; // <-- Importante para LocalDateTime
@@ -24,6 +25,9 @@ public class AtencionController {
 
     @Autowired
     private AtencionService atencionService;
+
+    @Autowired
+    private CitaService citaService;
 
     /**
      * GET /api/atenciones - Obtener todas las atenciones
@@ -101,7 +105,7 @@ public class AtencionController {
      * POST /api/atenciones/desde-cita - Crear atención desde cita
      */
     @PostMapping("/desde-cita")
-    public ResponseEntity<ApiResponse<String>> crearDesdeCita(
+    public ResponseEntity<ApiResponse<Atencion>> crearDesdeCita(
             @RequestParam Integer idCita,
             @RequestParam Integer idGroomer,
             @RequestParam Integer idSucursal,
@@ -113,16 +117,20 @@ public class AtencionController {
         try {
             log.info("POST /api/atenciones/desde-cita - Creando atención desde cita: {}", idCita);
 
-            // CORRECCIÓN: El servicio 'crearDesdeCita' es VOID.
-            atencionService.crearDesdeCita(
+            // ✅ NUEVO: Actualizar estado de cita
+            citaService.actualizarEstado(idCita, "atendido");
+            log.info("✅ Estado de cita {} actualizado a 'atendido'", idCita);
+
+            // ✅ CAMBIO: Capturar la atención creada
+            Atencion atencionCreada = atencionService.crearDesdeCita(
                     idCita, idGroomer, idSucursal, turnoNum,
                     tiempoEstimadoInicio, tiempoEstimadoFin, prioridad
             );
+            log.info("✅ Atención creada con ID: {}", atencionCreada.getIdAtencion());
 
-            // No se puede devolver la atención creada porque el SP no la devuelve.
-            // Devolvemos un mensaje de éxito.
+            // ✅ CAMBIO: Devolver la atención creada (NO null)
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.exitoso("Atención creada exitosamente desde la cita", null));
+                    .body(ApiResponse.exitoso("Atención creada exitosamente desde la cita", atencionCreada));
         } catch (Exception e) {
             log.error("Error al crear atención desde cita", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -134,7 +142,7 @@ public class AtencionController {
      * POST /api/atenciones/walk-in - Crear atención walk-in
      */
     @PostMapping("/walk-in")
-    public ResponseEntity<ApiResponse<String>> crearWalkIn(
+    public ResponseEntity<ApiResponse<Atencion>> crearWalkIn(
             @RequestParam Integer idMascota,
             @RequestParam Integer idCliente,
             @RequestParam Integer idGroomer,
@@ -148,15 +156,17 @@ public class AtencionController {
         try {
             log.info("POST /api/atenciones/walk-in - Creando atención walk-in");
 
-            // CORRECCIÓN: El servicio 'crearWalkIn' es VOID.
-            atencionService.crearWalkIn(
+            // ✅ CAMBIO: Capturar la atención creada
+            Atencion atencionCreada = atencionService.crearWalkIn(
                     idMascota, idCliente, idGroomer, idSucursal,
                     turnoNum, tiempoEstimadoInicio, tiempoEstimadoFin,
                     prioridad, observaciones
             );
+            log.info("✅ Atención walk-in creada con ID: {}", atencionCreada.getIdAtencion());
 
+            // ✅ CAMBIO: Devolver la atención creada (NO null)
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.exitoso("Atención walk-in creada exitosamente", null));
+                    .body(ApiResponse.exitoso("Atención walk-in creada exitosamente", atencionCreada));
         } catch (Exception e) {
             log.error("Error al crear atención walk-in", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

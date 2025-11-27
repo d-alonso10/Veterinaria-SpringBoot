@@ -74,7 +74,7 @@ public class AtencionService {
     /**
      * Crea una atención desde una cita usando el SP
      */
-    public void crearDesdeCita(Integer idCita, Integer idGroomer, Integer idSucursal, 
+    public Atencion crearDesdeCita(Integer idCita, Integer idGroomer, Integer idSucursal, 
                                Integer turnoNum,
                                LocalDateTime tiempoEstimadoInicio, 
                                LocalDateTime tiempoEstimadoFin,
@@ -96,8 +96,8 @@ public class AtencionService {
         }
         
         try {
-            // Llamar al SP
-            atencionRepository.crearAtencionDesdeCita(
+            // Llamar al SP y capturar resultado
+            Atencion atencionCreada = atencionRepository.crearAtencionDesdeCita(
                     idCita,
                     idGroomer,
                     idSucursal,
@@ -106,7 +106,8 @@ public class AtencionService {
                     tiempoEstimadoFin,
                     prioridad
             );
-            log.info("Atención creada exitosamente desde cita usando SP");
+            log.info("Atención creada exitosamente desde cita usando SP con ID: {}", atencionCreada.getIdAtencion());
+            return atencionCreada;
         } catch (Exception e) {
             log.error("Error al crear atención desde cita: ", e);
             throw new RuntimeException("Error al crear atención: " + e.getMessage());
@@ -116,7 +117,7 @@ public class AtencionService {
     /**
      * Crea una atención walk-in (sin cita previa) usando el SP
      */
-    public void crearWalkIn(Integer idMascota, Integer idCliente, Integer idGroomer, 
+    public Atencion crearWalkIn(Integer idMascota, Integer idCliente, Integer idGroomer, 
                             Integer idSucursal, Integer turnoNum,
                             LocalDateTime tiempoEstimadoInicio,
                             LocalDateTime tiempoEstimadoFin, 
@@ -142,8 +143,8 @@ public class AtencionService {
         }
         
         try {
-            // Llamar al SP
-            atencionRepository.crearAtencionWalkIn(
+            // Llamar al SP y capturar resultado
+            Atencion atencionCreada = atencionRepository.crearAtencionWalkIn(
                     idMascota,
                     idCliente,
                     idGroomer,
@@ -154,7 +155,8 @@ public class AtencionService {
                     prioridad,
                     observaciones
             );
-            log.info("Atención walk-in creada exitosamente usando SP");
+            log.info("Atención walk-in creada exitosamente usando SP con ID: {}", atencionCreada.getIdAtencion());
+            return atencionCreada;
         } catch (Exception e) {
             log.error("Error al crear atención walk-in: ", e);
             throw new RuntimeException("Error al crear atención walk-in: " + e.getMessage());
